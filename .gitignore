@@ -1,0 +1,24 @@
+# Build artifacts
+.build/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+
+# Dependencies
+node_modules/
+
+# Compiled files
+dist/
+*.js.map
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log

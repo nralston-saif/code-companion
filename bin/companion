@@ -1,0 +1,33 @@
+#!/bin/bash
+# Claude Companion CLI - trigger companion states from command line
+# Usage: companion <state> [duration]
+# States: thinking, working, attention, success, error, idle, listening, wave
+
+COMPANION_PORT=52532
+COMPANION_URL="http://localhost:${COMPANION_PORT}"
+
+STATE="$1"
+DURATION="${2:-3}"
+
+case "$STATE" in
+  thinking|working|success|error|idle|listening)
+    curl -s -X POST "${COMPANION_URL}/state" \
+      -H "Content-Type: application/json" \
+      -d "{\"state\": \"${STATE}\", \"duration\": ${DURATION}}" > /dev/null 2>&1
+    ;;
+  wave|waving)
+    curl -s -X POST "${COMPANION_URL}/state" \
+      -H "Content-Type: application/json" \
+      -d '{"state": "waving", "duration": 2}' > /dev/null 2>&1
+    ;;
+  attention|notify)
+    curl -s -X POST "${COMPANION_URL}/notify" \
+      -H "Content-Type: application/json" \
+      -d "{\"duration\": ${DURATION}}" > /dev/null 2>&1
+    ;;
+  *)
+    echo "Usage: companion <state> [duration]"
+    echo "States: thinking, working, attention, success, error, idle, listening, wave"
+    exit 1
+    ;;
+esac
