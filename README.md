@@ -47,7 +47,7 @@ Add to `~/.claude/claude_desktop_config.json`:
   "mcpServers": {
     "claude-companion": {
       "command": "node",
-      "args": ["/Users/nick/claude-companion/mcp-server/dist/index.js"]
+      "args": ["/path/to/claude-companion/mcp-server/dist/index.js"]
     }
   }
 }
