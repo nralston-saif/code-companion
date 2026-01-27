@@ -14,15 +14,30 @@ enum CompanionState: String, Codable, CaseIterable {
     case curious       // Looking at something interesting
     case waving        // Saying hi!
 
+    // Phase 1: Idle actions
+    case yawning       // Droopy eyes, open mouth
+    case stretching    // Elongated body
+    case lookingAround // Eyes dart left/right
+    case scratchingHead // Motion indicator near head
+
+    // Phase 1: Drag states
+    case dragging      // Wiggle during drag
+    case settling      // Wobble after drop
+
+    // Phase 2: Pet/poke states
+    case petted        // Happy with blush
+    case giggling      // Very happy, bouncing
+    case dizzy         // Too many clicks, spiral eyes
+
     var soundEffect: SoundEffect? {
         switch self {
         case .attention:
             return .chime
-        case .success:
+        case .success, .petted:
             return .success
-        case .error:
+        case .error, .dizzy:
             return .concern
-        case .waving:
+        case .waving, .giggling:
             return .hello
         default:
             return nil
@@ -33,15 +48,18 @@ enum CompanionState: String, Codable, CaseIterable {
         switch self {
         case .sleeping: return 0
         case .idle: return 1
+        case .yawning, .stretching, .lookingAround, .scratchingHead: return 1
         case .listening: return 2
         case .hovering: return 3
         case .curious: return 3
         case .working: return 4
         case .thinking: return 5
+        case .dragging, .settling: return 5
         case .clicked: return 6
+        case .petted, .giggling: return 6
         case .waving: return 7
         case .success: return 8
-        case .error: return 8
+        case .error, .dizzy: return 8
         case .attention: return 9
         }
     }

@@ -3,8 +3,14 @@ import SwiftUI
 struct CompanionView: View {
     @ObservedObject var animationController = AnimationController.shared
     @ObservedObject var settings = SettingsManager.shared
+    @ObservedObject var skinManager = SkinManager.shared
+    @ObservedObject var notificationQueue = NotificationQueue.shared
+    @ObservedObject var petStats = PetStats.shared
     @State private var isHovering = false
     @State private var clickScale: CGFloat = 1.0
+    @State private var isDragging = false
+    @State private var showTooltip = false
+    @State private var isClickAnimating = false
 
     var body: some View {
         ZStack {
@@ -15,16 +21,55 @@ struct CompanionView: View {
             PixelCharacter(
                 state: animationController.currentState,
                 frame: animationController.currentFrame,
-                isHovering: isHovering
+                isHovering: isHovering,
+                eyeOffset: animationController.eyeOffset,
+                breathingScale: animationController.calculateBreathingScale(),
+                dragWiggle: animationController.calculateDragWiggle(),
+                skin: skinManager.currentSkin,
+                mood: petStats.mood
             )
             .scaleEffect(clickScale)
 
             FloatingElements(state: animationController.currentState, frame: animationController.currentFrame)
+
+            // Bubble overlay
+            BubbleOverlay(
+                content: animationController.currentBubble,
+                frame: animationController.currentFrame
+            )
+
+            // Particle effects
+            ParticleSystem(
+                effect: animationController.currentParticleEffect,
+                frame: animationController.currentFrame
+            )
+
+            // Notification badge
+            NotificationBadge(count: notificationQueue.badgeCount)
+
+            // Status tooltip on hover (at top of window)
+            if showTooltip {
+                StatusTooltip(message: animationController.statusMessage)
+            }
         }
         .frame(width: 80, height: 80)
+        .offset(y: -15)  // Push companion up to make room for tooltip below
+        .frame(width: 80, height: 110)  // Full window height
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
                 isHovering = hovering
+                // Show tooltip after hovering for a moment
+                if hovering && animationController.statusMessage != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if isHovering {
+                            withAnimation(.easeIn(duration: 0.2)) {
+                                showTooltip = true
+                            }
+                        }
+                    }
+                } else {
+                    showTooltip = false
+                }
             }
             if hovering {
                 animationController.onHover()
@@ -33,15 +78,16 @@ struct CompanionView: View {
             }
         }
         .onTapGesture {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                clickScale = 0.85
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.4)) {
-                    clickScale = 1.0
-                }
-            }
+            guard !isClickAnimating else { return }
+            isClickAnimating = true
+
+            clickScale = 0.9
             animationController.onClick()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                clickScale = 1.0
+                isClickAnimating = false
+            }
         }
         .gesture(
             TapGesture(count: 2).onEnded {
@@ -49,21 +95,52 @@ struct CompanionView: View {
             }
         )
         .contextMenu {
-            Text("Notifications").font(.headline)
-            Toggle("Permission Requests", isOn: $settings.notifyOnPermission)
-            Toggle("Task Completion", isOn: $settings.notifyOnCompletion)
-            Toggle("Waiting for Input", isOn: $settings.notifyOnIdle)
-            Toggle("Errors", isOn: $settings.notifyOnError)
+            // Stats
+            Text("Tasks: \(petStats.totalTasks) | ✓ \(petStats.totalSuccesses) | ✗ \(petStats.totalErrors)")
 
             Divider()
 
-            Text("Sounds").font(.headline)
-            Toggle("Notification Sounds", isOn: $settings.notificationSounds)
-            Toggle("Ambient Sounds", isOn: $settings.ambientSounds)
+            // Settings submenus
+            Menu("Notifications") {
+                Toggle("Permission Requests", isOn: $settings.notifyOnPermission)
+                Toggle("Task Completion", isOn: $settings.notifyOnCompletion)
+                Toggle("Waiting for Input", isOn: $settings.notifyOnIdle)
+                Toggle("Errors", isOn: $settings.notifyOnError)
+            }
+
+            Menu("Sounds") {
+                Toggle("Notification Sounds", isOn: $settings.notificationSounds)
+                Toggle("Ambient Sounds", isOn: $settings.ambientSounds)
+            }
+
+            Menu("Eye Tracking") {
+                Picker("Mode", selection: $settings.eyeTrackingMode) {
+                    ForEach(EyeTrackingMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+
+            Menu("Skin") {
+                ForEach(CompanionSkin.allSkins) { skin in
+                    Button(action: {
+                        skinManager.selectSkin(skin)
+                    }) {
+                        HStack {
+                            Text(skin.name)
+                            if skinManager.currentSkin.id == skin.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
 
             Divider()
 
             Toggle("Launch at Login", isOn: $settings.launchAtLogin)
+            Toggle("Show Menu Bar Icon", isOn: $settings.showMenuBarIcon)
 
             Divider()
 
@@ -83,12 +160,18 @@ struct FloatingElements: View {
             switch state {
             case .sleeping:
                 sleepingZs
-            case .thinking:
+            case .thinking, .scratchingHead:
                 thinkingDots
-            case .success:
+            case .success, .petted:
                 sparkles
             case .attention:
                 exclamationMark
+            case .giggling:
+                hearts
+            case .dizzy:
+                stars
+            case .yawning:
+                yawnBubble
             default:
                 EmptyView()
             }
@@ -148,5 +231,38 @@ struct FloatingElements: View {
             .foregroundColor(.orange)
             .offset(x: 25, y: -20)
             .opacity(frame % 20 < 15 ? 1 : 0.3)
+    }
+
+    private var hearts: some View {
+        ForEach(0..<3) { i in
+            Text("❤")
+                .font(.system(size: 8))
+                .foregroundColor(.pink.opacity(0.8))
+                .offset(
+                    x: CGFloat([-12, 15, 0][i]),
+                    y: CGFloat([-20, -18, -25][i]) - CGFloat((frame + i * 10) % 15)
+                )
+                .opacity(Double((frame + i * 8) % 24) / 24.0)
+        }
+    }
+
+    private var stars: some View {
+        ForEach(0..<3) { i in
+            Text("★")
+                .font(.system(size: 8))
+                .foregroundColor(.yellow)
+                .offset(
+                    x: CGFloat([-15, 18, 0][i]) + sin(Double(frame) * 0.2 + Double(i)) * 3,
+                    y: CGFloat([-22, -20, -26][i])
+                )
+                .opacity(Double((frame + i * 6) % 20) / 20.0)
+        }
+    }
+
+    private var yawnBubble: some View {
+        Text("...")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(.gray.opacity(0.5))
+            .offset(x: 22, y: -18)
     }
 }

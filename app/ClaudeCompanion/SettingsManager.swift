@@ -1,6 +1,20 @@
 import Foundation
 import SwiftUI
 
+enum EyeTrackingMode: String, CaseIterable {
+    case screenCenter = "screenCenter"
+    case followCursor = "followCursor"
+    case disabled = "disabled"
+
+    var displayName: String {
+        switch self {
+        case .screenCenter: return "Follow Screen Center"
+        case .followCursor: return "Follow Cursor"
+        case .disabled: return "Disabled"
+        }
+    }
+}
+
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
 
@@ -14,6 +28,8 @@ class SettingsManager: ObservableObject {
         static let notifyOnIdle = "notifyOnIdle"
         static let notifyOnError = "notifyOnError"
         static let launchAtLogin = "launchAtLogin"
+        static let eyeTrackingMode = "eyeTrackingMode"
+        static let showMenuBarIcon = "showMenuBarIcon"
     }
 
     @Published var notificationSounds: Bool {
@@ -47,6 +63,16 @@ class SettingsManager: ObservableObject {
         }
     }
 
+    @Published var eyeTrackingMode: EyeTrackingMode {
+        didSet {
+            defaults.set(eyeTrackingMode.rawValue, forKey: Keys.eyeTrackingMode)
+        }
+    }
+
+    @Published var showMenuBarIcon: Bool {
+        didSet { defaults.set(showMenuBarIcon, forKey: Keys.showMenuBarIcon) }
+    }
+
     init() {
         defaults.register(defaults: [
             Keys.notificationSounds: true,
@@ -55,7 +81,9 @@ class SettingsManager: ObservableObject {
             Keys.notifyOnCompletion: true,
             Keys.notifyOnIdle: true,
             Keys.notifyOnError: true,
-            Keys.launchAtLogin: false
+            Keys.launchAtLogin: false,
+            Keys.eyeTrackingMode: EyeTrackingMode.followCursor.rawValue,
+            Keys.showMenuBarIcon: true
         ])
 
         self.notificationSounds = defaults.bool(forKey: Keys.notificationSounds)
@@ -65,6 +93,15 @@ class SettingsManager: ObservableObject {
         self.notifyOnIdle = defaults.bool(forKey: Keys.notifyOnIdle)
         self.notifyOnError = defaults.bool(forKey: Keys.notifyOnError)
         self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
+
+        if let modeString = defaults.string(forKey: Keys.eyeTrackingMode),
+           let mode = EyeTrackingMode(rawValue: modeString) {
+            self.eyeTrackingMode = mode
+        } else {
+            self.eyeTrackingMode = .followCursor
+        }
+
+        self.showMenuBarIcon = defaults.bool(forKey: Keys.showMenuBarIcon)
     }
 
     private func updateLoginItem() {

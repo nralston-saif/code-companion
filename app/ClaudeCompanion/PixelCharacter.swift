@@ -4,23 +4,50 @@ struct PixelCharacter: View {
     let state: CompanionState
     let frame: Int
     let isHovering: Bool
+    let eyeOffset: CGPoint
+    var breathingScale: CGFloat = 1.0
+    var dragWiggle: CGFloat = 0
+    var skin: CompanionSkin = .defaultSkin
+    var mood: PetMood = .neutral
 
-    private let bodyColor = Color(red: 0.92, green: 0.75, blue: 0.70)
+    private var bodyColor: Color { skin.bodyColor }
+    private var feetColor: Color { skin.feetColor }
+    private var blushColor: Color { skin.blushColor }
     private let eyeColor = Color.black
-    private let feetColor = Color(red: 0.88, green: 0.68, blue: 0.63)
     private let pixelSize: CGFloat = 4
 
     var body: some View {
         Canvas { context, size in
-            let centerX = size.width / 2
+            let centerX = size.width / 2 + dragWiggle
             let centerY = size.height / 2
             let bounceOffset = calculateBounce()
-            let squishX = calculateSquishX()
-            let squishY = calculateSquishY()
+            let squishX = calculateSquishX() * breathingScale
+            let squishY = calculateSquishY() * breathingScale
+            let stretchY = calculateStretchY()
 
-            drawBody(context: context, centerX: centerX, centerY: centerY + bounceOffset, squishX: squishX, squishY: squishY)
-            drawFeet(context: context, centerX: centerX, centerY: centerY + bounceOffset, squishX: squishX)
+            drawBody(context: context, centerX: centerX, centerY: centerY + bounceOffset, squishX: squishX, squishY: squishY * stretchY)
+            drawFeet(context: context, centerX: centerX, centerY: centerY + bounceOffset + (stretchY > 1 ? 4 : 0), squishX: squishX)
             drawEyes(context: context, centerX: centerX, centerY: centerY + bounceOffset, squishX: squishX, squishY: squishY)
+
+            // Draw mouth for yawning
+            if state == .yawning {
+                drawYawningMouth(context: context, centerX: centerX, centerY: centerY + bounceOffset)
+            }
+
+            // Draw blush for petted/giggling
+            if state == .petted || state == .giggling {
+                drawBlush(context: context, centerX: centerX, centerY: centerY + bounceOffset)
+            }
+
+            // Draw scratch indicator
+            if state == .scratchingHead {
+                drawScratchIndicator(context: context, centerX: centerX, centerY: centerY + bounceOffset)
+            }
+
+            // Draw mood indicators
+            if mood == .happy && state == .idle {
+                drawHappySparkles(context: context, centerX: centerX, centerY: centerY + bounceOffset)
+            }
         }
         .frame(width: 60, height: 60)
     }
@@ -30,7 +57,20 @@ struct PixelCharacter: View {
         case .attention: return sin(Double(frame) * 0.5) * 3
         case .success: return -abs(sin(Double(frame) * 0.4) * 4)
         case .hovering, .curious: return sin(Double(frame) * 0.2) * 1
+        case .giggling: return -abs(sin(Double(frame) * 0.6) * 5)
+        case .settling: return sin(Double(frame) * 1.5) * 2 * max(0, 1 - CGFloat(frame % 30) / 30)
+        case .dragging: return sin(Double(frame) * 0.8) * 2
         default: return 0
+        }
+    }
+
+    private func calculateStretchY() -> CGFloat {
+        switch state {
+        case .stretching:
+            // Animate stretch up then down
+            let phase = sin(Double(frame) * 0.15)
+            return 1.0 + CGFloat(max(0, phase)) * 0.25
+        default: return 1.0
         }
     }
 
@@ -81,49 +121,100 @@ struct PixelCharacter: View {
     }
 
     private func drawEyes(context: GraphicsContext, centerX: CGFloat, centerY: CGFloat, squishX: CGFloat, squishY: CGFloat) {
-        let eyeY = centerY - 2 * squishY
+        let eyeY = centerY - 4 * squishY  // Moved eyes up
         let leftEyeX = centerX - 8 * squishX
         let rightEyeX = centerX + 4 * squishX
 
-        let drawBothEyes: (EyeStyle, CGFloat, CGFloat) -> Void = { style, leftX, rightX in
-            self.drawEye(context: context, style: style, x: leftX, y: eyeY)
-            self.drawEye(context: context, style: style, x: rightX, y: eyeY)
+        // Apply eye offset based on window position (looking toward screen center)
+        let offsetX = eyeOffset.x
+        let offsetY = eyeOffset.y
+
+        let drawBothEyes: (EyeStyle, CGFloat, CGFloat, CGFloat) -> Void = { style, leftX, rightX, yOffset in
+            self.drawEye(context: context, style: style, x: leftX + offsetX, y: eyeY + yOffset + offsetY)
+            self.drawEye(context: context, style: style, x: rightX + offsetX, y: eyeY + yOffset + offsetY)
         }
 
         switch state {
         case .sleeping:
-            drawBothEyes(.closed, leftEyeX, rightEyeX)
+            // Sleeping eyes don't follow screen center
+            self.drawEye(context: context, style: .closed, x: leftEyeX, y: eyeY)
+            self.drawEye(context: context, style: .closed, x: rightEyeX, y: eyeY)
 
-        case .idle:
-            let style: EyeStyle = (frame % 120) < 5 ? .closed : .normal
-            drawBothEyes(style, leftEyeX, rightEyeX)
+        case .idle, .settling:
+            // Mood affects idle eyes
+            if mood == .sad {
+                // Sad droopy eyes
+                self.drawEye(context: context, style: .droopy, x: leftEyeX, y: eyeY + 1)
+                self.drawEye(context: context, style: .droopy, x: rightEyeX, y: eyeY + 1)
+            } else {
+                let style: EyeStyle = (frame % 120) < 5 ? .closed : .normal
+                if style == .closed {
+                    self.drawEye(context: context, style: .closed, x: leftEyeX, y: eyeY)
+                    self.drawEye(context: context, style: .closed, x: rightEyeX, y: eyeY)
+                } else {
+                    // Happy gets slightly bigger/brighter eyes
+                    let eyeStyle: EyeStyle = mood == .happy ? .attentive : .normal
+                    drawBothEyes(eyeStyle, leftEyeX, rightEyeX, 0)
+                }
+            }
 
-        case .thinking:
-            drawBothEyes(.thinking, leftEyeX, rightEyeX)
+        case .thinking, .scratchingHead:
+            // Thinking eyes look up, but still affected by horizontal offset
+            self.drawEye(context: context, style: .thinking, x: leftEyeX + offsetX, y: eyeY)
+            self.drawEye(context: context, style: .thinking, x: rightEyeX + offsetX, y: eyeY)
 
-        case .working:
-            drawBothEyes(.focused, leftEyeX, rightEyeX)
+        case .working, .dragging:
+            drawBothEyes(.focused, leftEyeX, rightEyeX, 0)
 
         case .attention:
-            drawBothEyes(.wide, leftEyeX, rightEyeX)
+            drawBothEyes(.wide, leftEyeX, rightEyeX, 0)
 
-        case .success, .clicked, .waving:
-            drawBothEyes(.happy, leftEyeX, rightEyeX)
+        case .success, .clicked, .waving, .petted:
+            // Happy eyes (curved) don't need offset - they're stylized
+            self.drawEye(context: context, style: .happy, x: leftEyeX, y: eyeY)
+            self.drawEye(context: context, style: .happy, x: rightEyeX, y: eyeY)
+
+        case .giggling:
+            // Extra happy - big curved eyes
+            self.drawEye(context: context, style: .happy, x: leftEyeX, y: eyeY - 1)
+            self.drawEye(context: context, style: .happy, x: rightEyeX, y: eyeY - 1)
 
         case .error:
-            drawBothEyes(.worried, leftEyeX, rightEyeX)
+            drawBothEyes(.worried, leftEyeX, rightEyeX, 0)
 
         case .hovering, .curious:
             let lookOffset: CGFloat = isHovering ? 1 : 0
-            drawBothEyes(.curious, leftEyeX + lookOffset, rightEyeX + lookOffset)
+            drawBothEyes(.curious, leftEyeX + lookOffset, rightEyeX + lookOffset, 0)
 
         case .listening:
-            drawBothEyes(.attentive, leftEyeX, rightEyeX)
+            drawBothEyes(.attentive, leftEyeX, rightEyeX, 0)
+
+        case .yawning:
+            self.drawEye(context: context, style: .droopy, x: leftEyeX, y: eyeY)
+            self.drawEye(context: context, style: .droopy, x: rightEyeX, y: eyeY)
+
+        case .stretching:
+            // Eyes closed during stretch
+            self.drawEye(context: context, style: .closed, x: leftEyeX, y: eyeY)
+            self.drawEye(context: context, style: .closed, x: rightEyeX, y: eyeY)
+
+        case .lookingAround:
+            // Eyes slowly glance left/right
+            let dartOffset = sin(Double(frame) * 0.08) * 2
+            self.drawEye(context: context, style: .normal, x: leftEyeX + CGFloat(dartOffset), y: eyeY)
+            self.drawEye(context: context, style: .normal, x: rightEyeX + CGFloat(dartOffset), y: eyeY)
+
+        case .dizzy:
+            self.drawEye(context: context, style: .spiral, x: leftEyeX, y: eyeY)
+            self.drawEye(context: context, style: .spiral, x: rightEyeX, y: eyeY)
         }
     }
 
     private enum EyeStyle {
         case normal, closed, thinking, focused, wide, happy, worried, curious, attentive
+        case droopy      // For yawning
+        case spiral      // For dizzy
+        case darting     // For looking around
     }
 
     private func drawEye(context: GraphicsContext, style: EyeStyle, x: CGFloat, y: CGFloat) {
@@ -170,6 +261,83 @@ struct PixelCharacter: View {
             context.fill(Path(rect), with: .color(eyeColor))
             let highlight = CGRect(x: x + pixelSize * 0.3, y: y + pixelSize * 0.3, width: pixelSize * 0.5, height: pixelSize * 0.5)
             context.fill(Path(highlight), with: .color(.white.opacity(0.7)))
+
+        case .droopy:
+            // Half-closed sleepy eyes for yawning
+            let rect = CGRect(x: x, y: y + pixelSize * 0.3, width: pixelSize * 2, height: pixelSize * 1.2)
+            context.fill(Path(rect), with: .color(eyeColor))
+
+        case .spiral:
+            // Spiral/dizzy eyes - draw X pattern
+            var path = Path()
+            path.move(to: CGPoint(x: x, y: y))
+            path.addLine(to: CGPoint(x: x + pixelSize * 2, y: y + pixelSize * 2))
+            path.move(to: CGPoint(x: x + pixelSize * 2, y: y))
+            path.addLine(to: CGPoint(x: x, y: y + pixelSize * 2))
+            context.stroke(path, with: .color(eyeColor), lineWidth: pixelSize * 0.5)
+
+        case .darting:
+            // Slightly smaller alert eyes
+            let rect = CGRect(x: x, y: y, width: pixelSize * 1.8, height: pixelSize * 2)
+            context.fill(Path(rect), with: .color(eyeColor))
+        }
+    }
+
+    // MARK: - Additional Drawing Functions
+
+    private func drawYawningMouth(context: GraphicsContext, centerX: CGFloat, centerY: CGFloat) {
+        // Draw an open mouth (oval) below the eyes
+        let mouthY = centerY + 6
+        let mouthRect = CGRect(x: centerX - pixelSize * 1.5, y: mouthY, width: pixelSize * 3, height: pixelSize * 2)
+        var mouthPath = Path()
+        mouthPath.addEllipse(in: mouthRect)
+        context.fill(mouthPath, with: .color(Color(red: 0.3, green: 0.2, blue: 0.2)))
+    }
+
+    private func drawBlush(context: GraphicsContext, centerX: CGFloat, centerY: CGFloat) {
+        // Draw pink blush circles on cheeks
+        let blushY = centerY
+        let leftBlush = CGRect(x: centerX - 16, y: blushY, width: pixelSize * 2, height: pixelSize * 1.5)
+        let rightBlush = CGRect(x: centerX + 10, y: blushY, width: pixelSize * 2, height: pixelSize * 1.5)
+        var blushPath = Path()
+        blushPath.addEllipse(in: leftBlush)
+        blushPath.addEllipse(in: rightBlush)
+        context.fill(blushPath, with: .color(blushColor.opacity(0.6)))
+    }
+
+    private func drawScratchIndicator(context: GraphicsContext, centerX: CGFloat, centerY: CGFloat) {
+        // Draw small motion lines near the head
+        let indicatorX = centerX + 18
+        let indicatorY = centerY - 12
+        let offset = sin(Double(frame) * 0.5) * 2
+
+        for i in 0..<3 {
+            let y = indicatorY + CGFloat(i * 3) + CGFloat(offset)
+            var path = Path()
+            path.move(to: CGPoint(x: indicatorX, y: y))
+            path.addLine(to: CGPoint(x: indicatorX + 4, y: y - 1))
+            context.stroke(path, with: .color(.gray.opacity(0.5)), lineWidth: 1)
+        }
+    }
+
+    private func drawHappySparkles(context: GraphicsContext, centerX: CGFloat, centerY: CGFloat) {
+        // Small sparkles around a happy companion
+        let sparklePositions: [(CGFloat, CGFloat)] = [(-18, -10), (20, -8), (-15, 8)]
+        for (i, pos) in sparklePositions.enumerated() {
+            let phase = Double(frame + i * 20) * 0.1
+            let opacity = (sin(phase) + 1) / 4 // 0 to 0.5
+            let sparkleSize: CGFloat = 3
+
+            let x = centerX + pos.0
+            let y = centerY + pos.1
+
+            // Draw a small star/sparkle
+            var path = Path()
+            path.move(to: CGPoint(x: x, y: y - sparkleSize))
+            path.addLine(to: CGPoint(x: x, y: y + sparkleSize))
+            path.move(to: CGPoint(x: x - sparkleSize, y: y))
+            path.addLine(to: CGPoint(x: x + sparkleSize, y: y))
+            context.stroke(path, with: .color(.yellow.opacity(opacity)), lineWidth: 1.5)
         }
     }
 }

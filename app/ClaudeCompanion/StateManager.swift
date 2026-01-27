@@ -7,6 +7,7 @@ class StateManager {
     private var listener: NWListener?
     private let port: UInt16 = 52532
     private let animationController = AnimationController.shared
+    private let petStats = PetStats.shared
     private var lastHeartbeat = Date()
     private var heartbeatTimer: Timer?
     private let heartbeatTimeout: TimeInterval = 30
@@ -112,6 +113,14 @@ class StateManager {
             handleStatus(connection: connection)
         case ("POST", "/sleep"):
             handleSleep(connection: connection)
+        case ("POST", "/bubble"):
+            handleBubble(body: body, connection: connection)
+        case ("POST", "/particles"):
+            handleParticles(body: body, connection: connection)
+        case ("POST", "/status"):
+            handleSetStatus(body: body, connection: connection)
+        case ("POST", "/notification"):
+            handleNotification(body: body, connection: connection)
         default:
             sendResponse(connection: connection, status: 404, body: "Not found")
         }
@@ -127,6 +136,18 @@ class StateManager {
         }
 
         DispatchQueue.main.async {
+            // Track pet stats based on state
+            switch state {
+            case .working, .thinking:
+                self.petStats.onTaskStarted()
+            case .success:
+                self.petStats.onSuccess()
+            case .error:
+                self.petStats.onError()
+            default:
+                self.petStats.onInteraction()
+            }
+
             if let duration = json.duration {
                 self.animationController.setTemporaryState(state, duration: duration)
             } else {
@@ -176,6 +197,99 @@ class StateManager {
         DispatchQueue.main.async {
             self.animationController.setState(.sleeping)
         }
+        sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
+    }
+
+    private func handleBubble(body: String?, connection: NWConnection) {
+        guard let body = body,
+              let data = body.data(using: .utf8),
+              let json = try? JSONDecoder().decode(BubbleRequest.self, from: data) else {
+            sendResponse(connection: connection, status: 400, body: "Invalid JSON")
+            return
+        }
+
+        DispatchQueue.main.async {
+            if let emoji = json.emoji {
+                self.animationController.showBubble(emoji: emoji, duration: json.duration ?? 2.0)
+            } else if let text = json.text {
+                let bubbleType: BubbleType = json.type == "thought" ? .thought : .speech
+                self.animationController.showBubble(text: text, type: bubbleType, duration: json.duration ?? 3.0)
+            } else {
+                self.animationController.hideBubble()
+            }
+        }
+
+        sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
+    }
+
+    private func handleParticles(body: String?, connection: NWConnection) {
+        guard let body = body,
+              let data = body.data(using: .utf8),
+              let json = try? JSONDecoder().decode(ParticleRequest.self, from: data) else {
+            sendResponse(connection: connection, status: 400, body: "Invalid JSON")
+            return
+        }
+
+        DispatchQueue.main.async {
+            if let effectName = json.effect {
+                let effect: ParticleEffect?
+                switch effectName {
+                case "confetti": effect = .confetti
+                case "rain", "rainCloud": effect = .rainCloud
+                case "hearts": effect = .hearts
+                case "sparkles": effect = .sparkles
+                default: effect = nil
+                }
+
+                if let effect = effect {
+                    self.animationController.showParticles(effect, duration: json.duration ?? 2.0)
+                }
+            } else {
+                self.animationController.hideParticles()
+            }
+        }
+
+        sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
+    }
+
+    private func handleSetStatus(body: String?, connection: NWConnection) {
+        guard let body = body,
+              let data = body.data(using: .utf8),
+              let json = try? JSONDecoder().decode(SetStatusRequest.self, from: data) else {
+            sendResponse(connection: connection, status: 400, body: "Invalid JSON")
+            return
+        }
+
+        DispatchQueue.main.async {
+            self.animationController.setStatus(json.message)
+        }
+
+        sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
+    }
+
+    private func handleNotification(body: String?, connection: NWConnection) {
+        guard let body = body,
+              let data = body.data(using: .utf8),
+              let json = try? JSONDecoder().decode(NotificationQueueRequest.self, from: data) else {
+            sendResponse(connection: connection, status: 400, body: "Invalid JSON")
+            return
+        }
+
+        DispatchQueue.main.async {
+            let priority: NotificationPriority
+            switch json.priority ?? "normal" {
+            case "low": priority = .low
+            case "high": priority = .high
+            default: priority = .normal
+            }
+
+            NotificationQueue.shared.enqueue(
+                message: json.message,
+                emoji: json.emoji,
+                priority: priority
+            )
+        }
+
         sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
     }
 
@@ -231,4 +345,26 @@ struct NotifyRequest: Codable {
 struct StatusResponse: Codable {
     let state: String
     let awake: Bool
+}
+
+struct BubbleRequest: Codable {
+    let text: String?
+    let emoji: String?
+    let type: String?
+    let duration: TimeInterval?
+}
+
+struct ParticleRequest: Codable {
+    let effect: String?
+    let duration: TimeInterval?
+}
+
+struct SetStatusRequest: Codable {
+    let message: String?
+}
+
+struct NotificationQueueRequest: Codable {
+    let message: String
+    let emoji: String?
+    let priority: String?
 }
