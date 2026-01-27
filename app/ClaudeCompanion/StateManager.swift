@@ -5,43 +5,40 @@ class StateManager {
     static let shared = StateManager()
 
     private var listener: NWListener?
-    private let port: UInt16 = 52532  // "CLAUD" on phone keypad :)
+    private let port: UInt16 = 52532
     private let animationController = AnimationController.shared
-
-    private var lastHeartbeat: Date = Date()
+    private var lastHeartbeat = Date()
     private var heartbeatTimer: Timer?
-    private let heartbeatTimeout: TimeInterval = 30  // Go to sleep if no heartbeat for 30 seconds
+    private let heartbeatTimeout: TimeInterval = 30
 
     init() {
         startHeartbeatMonitor()
     }
 
     func startServer() {
-        do {
-            let parameters = NWParameters.tcp
-            parameters.allowLocalEndpointReuse = true
+        let parameters = NWParameters.tcp
+        parameters.allowLocalEndpointReuse = true
 
-            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
-
-            listener?.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    print("Claude Companion server listening on port \(self.port)")
-                case .failed(let error):
-                    print("Server failed: \(error)")
-                default:
-                    break
-                }
-            }
-
-            listener?.newConnectionHandler = { [weak self] connection in
-                self?.handleConnection(connection)
-            }
-
-            listener?.start(queue: .main)
-        } catch {
-            print("Failed to start server: \(error)")
+        guard let port = NWEndpoint.Port(rawValue: port),
+              let newListener = try? NWListener(using: parameters, on: port) else {
+            print("Failed to start server")
+            return
         }
+
+        listener = newListener
+        listener?.stateUpdateHandler = { [weak self] state in
+            if case .ready = state {
+                print("Claude Companion server listening on port \(self?.port ?? 0)")
+            } else if case .failed(let error) = state {
+                print("Server failed: \(error)")
+            }
+        }
+
+        listener?.newConnectionHandler = { [weak self] connection in
+            self?.handleConnection(connection)
+        }
+
+        listener?.start(queue: .main)
     }
 
     func stopServer() {
@@ -69,7 +66,6 @@ class StateManager {
             return
         }
 
-        // Parse HTTP request
         let lines = requestString.split(separator: "\r\n")
         guard let firstLine = lines.first else {
             sendResponse(connection: connection, status: 400, body: "Invalid request")
@@ -85,28 +81,22 @@ class StateManager {
         let method = String(parts[0])
         let path = String(parts[1])
 
-        // Find body (after empty line)
-        var body: String? = nil
+        var body: String?
         if let emptyLineIndex = lines.firstIndex(of: "") {
-            let bodyLines = lines.dropFirst(emptyLineIndex + 1)
-            body = bodyLines.joined(separator: "\r\n")
+            body = lines.dropFirst(emptyLineIndex + 1).joined(separator: "\r\n")
         }
 
-        // Also check for body without proper HTTP headers separation
-        if body == nil || body?.isEmpty == true {
-            if let jsonStart = requestString.firstIndex(of: "{") {
-                body = String(requestString[jsonStart...])
-            }
+        if body == nil || body?.isEmpty == true,
+           let jsonStart = requestString.firstIndex(of: "{") {
+            body = String(requestString[jsonStart...])
         }
 
         handleRequest(method: method, path: path, body: body, connection: connection)
     }
 
     private func handleRequest(method: String, path: String, body: String?, connection: NWConnection) {
-        // Update heartbeat on any request
         lastHeartbeat = Date()
 
-        // Wake up if sleeping
         if animationController.currentState == .sleeping {
             animationController.setState(.idle)
         }
@@ -114,36 +104,25 @@ class StateManager {
         switch (method, path) {
         case ("POST", "/state"):
             handleStateChange(body: body, connection: connection)
-
         case ("POST", "/notify"):
             handleNotify(body: body, connection: connection)
-
         case ("POST", "/heartbeat"):
             handleHeartbeat(connection: connection)
-
         case ("GET", "/status"):
             handleStatus(connection: connection)
-
         case ("POST", "/sleep"):
             handleSleep(connection: connection)
-
         default:
             sendResponse(connection: connection, status: 404, body: "Not found")
         }
     }
 
-    // MARK: - Request Handlers
-
     private func handleStateChange(body: String?, connection: NWConnection) {
         guard let body = body,
               let data = body.data(using: .utf8),
-              let json = try? JSONDecoder().decode(StateRequest.self, from: data) else {
-            sendResponse(connection: connection, status: 400, body: "Invalid JSON")
-            return
-        }
-
-        guard let state = CompanionState(rawValue: json.state) else {
-            sendResponse(connection: connection, status: 400, body: "Invalid state: \(json.state)")
+              let json = try? JSONDecoder().decode(StateRequest.self, from: data),
+              let state = CompanionState(rawValue: json.state) else {
+            sendResponse(connection: connection, status: 400, body: "Invalid JSON or state")
             return
         }
 
@@ -167,7 +146,6 @@ class StateManager {
         }
 
         DispatchQueue.main.async {
-            // Show attention state
             self.animationController.setState(.attention, duration: json.duration ?? 3.0)
         }
 
@@ -185,12 +163,13 @@ class StateManager {
             awake: animationController.currentState != .sleeping
         )
 
-        if let jsonData = try? JSONEncoder().encode(status),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            sendResponse(connection: connection, status: 200, body: jsonString)
-        } else {
+        guard let jsonData = try? JSONEncoder().encode(status),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
             sendResponse(connection: connection, status: 500, body: "Internal error")
+            return
         }
+
+        sendResponse(connection: connection, status: 200, body: jsonString)
     }
 
     private func handleSleep(connection: NWConnection) {
@@ -200,26 +179,19 @@ class StateManager {
         sendResponse(connection: connection, status: 200, body: "{\"success\": true}")
     }
 
-    // MARK: - Heartbeat Monitor
-
     private func startHeartbeatMonitor() {
         heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
 
             let timeSinceHeartbeat = Date().timeIntervalSince(self.lastHeartbeat)
 
-            if timeSinceHeartbeat > self.heartbeatTimeout {
-                // No heartbeat - Claude not running, go to sleep
-                if self.animationController.currentState != .sleeping {
-                    DispatchQueue.main.async {
-                        self.animationController.setState(.sleeping)
-                    }
+            if timeSinceHeartbeat > self.heartbeatTimeout && self.animationController.currentState != .sleeping {
+                DispatchQueue.main.async {
+                    self.animationController.setState(.sleeping)
                 }
             }
         }
     }
-
-    // MARK: - HTTP Response
 
     private func sendResponse(connection: NWConnection, status: Int, body: String) {
         let statusText: String
@@ -245,8 +217,6 @@ class StateManager {
         })
     }
 }
-
-// MARK: - Request/Response Models
 
 struct StateRequest: Codable {
     let state: String

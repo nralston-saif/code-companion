@@ -10,13 +10,14 @@ import {
 const COMPANION_PORT = 52532;
 const COMPANION_URL = `http://localhost:${COMPANION_PORT}`;
 
-// Heartbeat interval to keep companion awake
 let heartbeatInterval: NodeJS.Timeout | null = null;
 
-async function sendToCompanion(
-  endpoint: string,
-  body?: object
-): Promise<{ success: boolean; error?: string }> {
+interface CompanionResult {
+  success: boolean;
+  error?: string;
+}
+
+async function sendToCompanion(endpoint: string, body?: object): Promise<CompanionResult> {
   try {
     const response = await fetch(`${COMPANION_URL}${endpoint}`, {
       method: "POST",
@@ -24,11 +25,9 @@ async function sendToCompanion(
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}` };
-    }
-
-    return { success: true };
+    return response.ok
+      ? { success: true }
+      : { success: false, error: `HTTP ${response.status}` };
   } catch (error) {
     return {
       success: false,
@@ -37,34 +36,22 @@ async function sendToCompanion(
   }
 }
 
-async function setState(
-  state: string,
-  duration?: number
-): Promise<{ success: boolean; error?: string }> {
+function setState(state: string, duration?: number): Promise<CompanionResult> {
   return sendToCompanion("/state", { state, duration });
 }
 
-async function notify(
-  message?: string,
-  duration?: number
-): Promise<{ success: boolean; error?: string }> {
+function notify(message?: string, duration?: number): Promise<CompanionResult> {
   return sendToCompanion("/notify", { message, duration });
 }
 
-async function sendHeartbeat(): Promise<void> {
-  await sendToCompanion("/heartbeat");
+function sendHeartbeat(): Promise<CompanionResult> {
+  return sendToCompanion("/heartbeat");
 }
 
 function startHeartbeat(): void {
   if (heartbeatInterval) return;
-
-  // Send immediate heartbeat
   sendHeartbeat();
-
-  // Then every 10 seconds
-  heartbeatInterval = setInterval(() => {
-    sendHeartbeat();
-  }, 10000);
+  heartbeatInterval = setInterval(sendHeartbeat, 10000);
 }
 
 function stopHeartbeat(): void {
@@ -74,209 +61,84 @@ function stopHeartbeat(): void {
   }
 }
 
-// Create the MCP server
 const server = new Server(
-  {
-    name: "claude-companion",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  { name: "claude-companion", version: "1.0.0" },
+  { capabilities: { tools: {} } }
 );
 
-// Define available tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "companion_thinking",
-        description:
-          "Set the companion to thinking state. Use when processing or analyzing something.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-      {
-        name: "companion_working",
-        description:
-          "Set the companion to working state. Use when actively doing a task.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-      {
-        name: "companion_attention",
-        description:
-          "Get the user's attention. Companion will bounce and make a sound. Use when you need user input or have important information.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            duration: {
-              type: "number",
-              description: "How long to show attention state (seconds)",
-              default: 3,
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        name: "companion_success",
-        description:
-          "Show success/celebration. Companion will look happy. Use when completing a task successfully.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            duration: {
-              type: "number",
-              description: "How long to celebrate (seconds)",
-              default: 2,
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        name: "companion_error",
-        description:
-          "Show concern/error state. Companion will look worried. Use when something went wrong.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            duration: {
-              type: "number",
-              description: "How long to show error state (seconds)",
-              default: 2,
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        name: "companion_idle",
-        description: "Return companion to idle/default state.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-      {
-        name: "companion_listening",
-        description:
-          "Set companion to listening state. Use when waiting for user input.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-      {
-        name: "companion_wave",
-        description: "Make the companion wave hello! A friendly greeting.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-    ],
-  };
-});
+const emptySchema = { type: "object" as const, properties: {}, required: [] as string[] };
 
-// Handle tool calls
+function durationSchema(description: string, defaultValue: number) {
+  return {
+    type: "object" as const,
+    properties: {
+      duration: { type: "number" as const, description, default: defaultValue },
+    },
+    required: [] as string[],
+  };
+}
+
+const tools = [
+  { name: "companion_thinking", description: "Set the companion to thinking state. Use when processing or analyzing something.", inputSchema: emptySchema },
+  { name: "companion_working", description: "Set the companion to working state. Use when actively doing a task.", inputSchema: emptySchema },
+  { name: "companion_attention", description: "Get the user's attention. Companion will bounce and make a sound. Use when you need user input or have important information.", inputSchema: durationSchema("How long to show attention state (seconds)", 3) },
+  { name: "companion_success", description: "Show success/celebration. Companion will look happy. Use when completing a task successfully.", inputSchema: durationSchema("How long to celebrate (seconds)", 2) },
+  { name: "companion_error", description: "Show concern/error state. Companion will look worried. Use when something went wrong.", inputSchema: durationSchema("How long to show error state (seconds)", 2) },
+  { name: "companion_idle", description: "Return companion to idle/default state.", inputSchema: emptySchema },
+  { name: "companion_listening", description: "Set companion to listening state. Use when waiting for user input.", inputSchema: emptySchema },
+  { name: "companion_wave", description: "Make the companion wave hello! A friendly greeting.", inputSchema: emptySchema },
+];
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  const duration = (args?.duration as number | undefined);
 
-  let result: { success: boolean; error?: string };
+  const toolHandlers: Record<string, () => Promise<CompanionResult>> = {
+    companion_thinking: () => setState("thinking"),
+    companion_working: () => setState("working"),
+    companion_attention: () => notify(undefined, duration ?? 3),
+    companion_success: () => setState("success", duration ?? 2),
+    companion_error: () => setState("error", duration ?? 2),
+    companion_idle: () => setState("idle"),
+    companion_listening: () => setState("listening"),
+    companion_wave: () => setState("waving", 2),
+  };
 
-  switch (name) {
-    case "companion_thinking":
-      result = await setState("thinking");
-      break;
-
-    case "companion_working":
-      result = await setState("working");
-      break;
-
-    case "companion_attention":
-      result = await notify(undefined, (args?.duration as number) ?? 3);
-      break;
-
-    case "companion_success":
-      result = await setState("success", (args?.duration as number) ?? 2);
-      break;
-
-    case "companion_error":
-      result = await setState("error", (args?.duration as number) ?? 2);
-      break;
-
-    case "companion_idle":
-      result = await setState("idle");
-      break;
-
-    case "companion_listening":
-      result = await setState("listening");
-      break;
-
-    case "companion_wave":
-      result = await setState("waving", 2);
-      break;
-
-    default:
-      return {
-        content: [{ type: "text", text: `Unknown tool: ${name}` }],
-        isError: true,
-      };
-  }
-
-  if (result.success) {
+  const handler = toolHandlers[name];
+  if (!handler) {
     return {
-      content: [{ type: "text", text: `Companion state updated: ${name}` }],
-    };
-  } else {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Failed to update companion: ${result.error}. Is the companion app running?`,
-        },
-      ],
+      content: [{ type: "text", text: `Unknown tool: ${name}` }],
       isError: true,
     };
   }
+
+  const result = await handler();
+
+  return result.success
+    ? { content: [{ type: "text", text: `Companion state updated: ${name}` }] }
+    : {
+        content: [{ type: "text", text: `Failed to update companion: ${result.error}. Is the companion app running?` }],
+        isError: true,
+      };
 });
 
-// Start the server
-async function main() {
-  // Start heartbeat to keep companion awake
+async function handleShutdown(): Promise<void> {
+  stopHeartbeat();
+  await sendToCompanion("/sleep");
+  process.exit(0);
+}
+
+async function main(): Promise<void> {
   startHeartbeat();
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-
-  // Set initial state to idle (wake up)
   await setState("idle");
 
-  // Cleanup on exit
-  process.on("SIGINT", async () => {
-    stopHeartbeat();
-    await sendToCompanion("/sleep");
-    process.exit(0);
-  });
-
-  process.on("SIGTERM", async () => {
-    stopHeartbeat();
-    await sendToCompanion("/sleep");
-    process.exit(0);
-  });
+  process.on("SIGINT", handleShutdown);
+  process.on("SIGTERM", handleShutdown);
 }
 
 main().catch(console.error);

@@ -18,37 +18,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var animationController: AnimationController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide from dock
         NSApp.setActivationPolicy(.accessory)
 
-        // Initialize managers
         stateManager = StateManager.shared
         animationController = AnimationController.shared
 
-        // Create the floating companion window
         setupCompanionWindow()
-
-        // Start the HTTP server for MCP communication
         stateManager.startServer()
-
-        // Start with sleeping state (Claude not running)
         animationController.setState(.sleeping)
     }
 
     func setupCompanionWindow() {
-        // Get screen dimensions
         guard let screen = NSScreen.main else { return }
-        let screenFrame = screen.visibleFrame
 
-        // Window size
         let windowSize: CGFloat = 80
         let padding: CGFloat = 20
+        let windowX = screen.visibleFrame.maxX - windowSize - padding
+        let windowY = screen.visibleFrame.maxY - windowSize - padding
 
-        // Position in top right
-        let windowX = screenFrame.maxX - windowSize - padding
-        let windowY = screenFrame.maxY - windowSize - padding
-
-        // Create the panel (floating window)
         companionWindow = NSPanel(
             contentRect: NSRect(x: windowX, y: windowY, width: windowSize, height: windowSize),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -56,7 +43,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
 
-        // Configure window properties
         companionWindow.isFloatingPanel = true
         companionWindow.level = .floating
         companionWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -64,12 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         companionWindow.backgroundColor = .clear
         companionWindow.hasShadow = true
         companionWindow.isMovableByWindowBackground = true
-
-        // Create the companion view
-        let companionView = CompanionView()
-        companionWindow.contentView = NSHostingView(rootView: companionView)
-
-        // Show the window
+        companionWindow.contentView = NSHostingView(rootView: CompanionView())
         companionWindow.orderFrontRegardless()
     }
 

@@ -6,7 +6,6 @@ class SettingsManager: ObservableObject {
 
     private let defaults = UserDefaults.standard
 
-    // Keys
     private enum Keys {
         static let notificationSounds = "notificationSounds"
         static let ambientSounds = "ambientSounds"
@@ -17,7 +16,6 @@ class SettingsManager: ObservableObject {
         static let launchAtLogin = "launchAtLogin"
     }
 
-    // Published properties for SwiftUI binding
     @Published var notificationSounds: Bool {
         didSet { defaults.set(notificationSounds, forKey: Keys.notificationSounds) }
     }
@@ -50,10 +48,9 @@ class SettingsManager: ObservableObject {
     }
 
     init() {
-        // Register defaults
         defaults.register(defaults: [
             Keys.notificationSounds: true,
-            Keys.ambientSounds: false,  // Off by default
+            Keys.ambientSounds: false,
             Keys.notifyOnPermission: true,
             Keys.notifyOnCompletion: true,
             Keys.notifyOnIdle: true,
@@ -61,7 +58,6 @@ class SettingsManager: ObservableObject {
             Keys.launchAtLogin: false
         ])
 
-        // Load saved values
         self.notificationSounds = defaults.bool(forKey: Keys.notificationSounds)
         self.ambientSounds = defaults.bool(forKey: Keys.ambientSounds)
         self.notifyOnPermission = defaults.bool(forKey: Keys.notifyOnPermission)
@@ -72,22 +68,16 @@ class SettingsManager: ObservableObject {
     }
 
     private func updateLoginItem() {
-        // Launch at login implementation would go here
-        // Using SMAppService for modern macOS
+        // SMAppService implementation for launch at login
     }
 
     func shouldNotify(for state: CompanionState) -> Bool {
         switch state {
-        case .attention:
-            return notifyOnPermission
-        case .success:
-            return notifyOnCompletion
-        case .error:
-            return notifyOnError
-        case .listening:
-            return notifyOnIdle
-        default:
-            return true
+        case .attention: return notifyOnPermission
+        case .success: return notifyOnCompletion
+        case .error: return notifyOnError
+        case .listening: return notifyOnIdle
+        default: return true
         }
     }
 }
