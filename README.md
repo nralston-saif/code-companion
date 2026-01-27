@@ -1,46 +1,44 @@
 # Claude Companion
 
-A delightful pixel art desktop pet that lives in the corner of your screen and reacts to Claude Code's activity. Think Clippy meets Tamagotchi, but actually helpful.
+A desktop status indicator for Claude Code. A friendly pixel art companion lives in the corner of your screen and shows you what Claude is doing at a glance.
 
 ![Claude Companion](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 
 ## Features
 
-### Lifelike Animations
-- **Breathing animation** - Subtle idle breathing when resting
-- **Random idle behaviors** - Yawning, stretching, looking around, scratching head
-- **Eye tracking** - Eyes follow your cursor or look toward screen center
-- **Expressive states** - Different expressions for thinking, working, success, error, and more
+### Real-Time Status
+- **Visual state indicator** - See instantly when Claude is thinking, working, waiting, or idle
+- **Status tooltip** - Hover to see what Claude is currently working on
+- **Menu bar icon** - Quick status check from anywhere on your Mac
 
-### Interactive Pet
-- **Click reactions** - Single click for a happy response
-- **Pet/poke system** - Click repeatedly to pet (3x), make giggle (5x), or dizzy (8x)
-- **Double-click wave** - Wave hello!
-- **Drag reactions** - Wiggles when dragged, settles when dropped
-- **Mood system** - Hidden happiness meter affects appearance (sparkly eyes when happy, droopy when sad)
-
-### Visual Customization
-- **5 color skins** - Classic, Ocean, Forest, Sunset, Lavender, Midnight
-- **Speech/thought bubbles** - Display emoji or text messages
-- **Particle effects** - Confetti, sparkles, hearts, rain clouds
-- **Status tooltip** - See what Claude is working on when hovering
-
-### System Integration
-- **Menu bar icon** - Quick access to controls and settings
+### Smart Notifications
+- **Attention alerts** - Bounces and plays sound when Claude needs your input
+- **Error indication** - Shows concern when something goes wrong
+- **Task completion** - Celebrates when tasks finish successfully
 - **Notification queue** - Badge count for stacked notifications
-- **Launch at login** - Start automatically with your Mac
-- **Configurable sounds** - Notification and ambient sound toggles
+- **Configurable alerts** - Toggle notifications for permissions, completion, errors
 
-### MCP Tools for Claude
-Claude Code can control the companion using these tools:
-- `companion_thinking` - Show thinking state with status message
-- `companion_working` - Show working state with status message
-- `companion_attention` - Get user's attention (bounces and sounds)
-- `companion_success` - Celebrate task completion
-- `companion_error` - Show concern for errors
-- `companion_idle` - Return to default state
-- `companion_listening` - Show listening state
-- `companion_wave` - Friendly wave animation
+### MCP Integration
+Claude Code automatically controls the companion:
+- `companion_thinking` - Thinking state with status message
+- `companion_working` - Working state with status message
+- `companion_attention` - Gets your attention (bounces + sound)
+- `companion_success` - Celebrates completion
+- `companion_error` - Shows concern
+- `companion_idle` - Returns to default
+- `companion_listening` - Waiting for input
+
+### Customization
+- **6 color skins** - Classic, Ocean, Forest, Sunset, Lavender, Midnight
+- **Eye tracking** - Follow cursor, screen center, or disabled
+- **Sound settings** - Toggle notification and ambient sounds
+- **Launch at login** - Start automatically with macOS
+
+### Interactive Extras
+- **Click reactions** - Pet repeatedly for different reactions
+- **Lifelike animations** - Breathing, blinking, yawning, stretching
+- **Mood system** - Appearance changes based on interactions
+- **Speech bubbles & particles** - Visual flair for notifications
 
 ## Quick Start
 
