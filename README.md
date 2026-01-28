@@ -61,10 +61,13 @@ cd code-companion
 This will:
 1. Build the macOS app
 2. Install and build the MCP server
-3. Auto-configure Claude Code MCP settings
-4. Launch the companion
+3. Auto-configure Claude Code MCP settings (`~/.claude.json`)
+4. Auto-configure notification hooks (`~/.claude/settings.json`)
+5. Launch the companion
 
-After setup completes, restart Claude Code to load the MCP server.
+After setup completes, restart Claude Code to connect.
+
+> **Note:** Auto-configuration requires `jq`. Install with `brew install jq` if needed.
 
 ### Optional: Add to Login Items
 

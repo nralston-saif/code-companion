@@ -82,8 +82,40 @@ else
 fi
 echo ""
 
-# Step 5: Launch the app
-echo -e "${BLUE}Step 5: Launching Code Companion...${NC}"
+# Step 5: Configure hooks
+echo -e "${BLUE}Step 5: Configuring Claude Code hooks...${NC}"
+CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+COMPANION_BIN="$SCRIPT_DIR/bin/companion"
+
+# Ensure .claude directory exists
+mkdir -p "$HOME/.claude"
+
+if command -v jq &> /dev/null; then
+  if [ -f "$CLAUDE_SETTINGS" ]; then
+    # Update existing settings with hooks
+    jq --arg bin "$COMPANION_BIN" '
+      .hooks.PermissionRequest = [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " attention 5")}]}] |
+      .hooks.Notification = [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " attention 3")}]}] |
+      .hooks.Stop = [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " success 2")}]}]
+    ' "$CLAUDE_SETTINGS" > "$CLAUDE_SETTINGS.tmp" && mv "$CLAUDE_SETTINGS.tmp" "$CLAUDE_SETTINGS"
+  else
+    # Create new settings file with hooks
+    jq -n --arg bin "$COMPANION_BIN" '{
+      hooks: {
+        PermissionRequest: [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " attention 5")}]}],
+        Notification: [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " attention 3")}]}],
+        Stop: [{"matcher": "", "hooks": [{"type": "command", "command": ($bin + " success 2")}]}]
+      }
+    }' > "$CLAUDE_SETTINGS"
+  fi
+  echo -e "${GREEN}✓ Hooks configured in ~/.claude/settings.json${NC}"
+else
+  echo -e "${BLUE}jq not found. Please add hooks manually to ~/.claude/settings.json${NC}"
+fi
+echo ""
+
+# Step 6: Launch the app
+echo -e "${BLUE}Step 6: Launching Code Companion...${NC}"
 open "$APP_BUNDLE"
 echo -e "${GREEN}✓ Code Companion is running${NC}"
 echo ""
@@ -91,5 +123,5 @@ echo ""
 echo -e "${GREEN}🎉 Setup complete!${NC}"
 echo ""
 echo "Next steps:"
-echo "1. Restart Claude Code to load the MCP server"
+echo "1. Restart Claude Code to connect"
 echo "2. (Optional) Add to Login Items: System Settings → General → Login Items"
