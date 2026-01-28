@@ -199,7 +199,7 @@ class MenuBarController: NSObject, ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(NSMenuItem(title: "Quit Claude Companion", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit Code Companion", action: #selector(quit), keyEquivalent: "q"))
 
         // Set targets for all items including submenus
         setTargets(for: menu)

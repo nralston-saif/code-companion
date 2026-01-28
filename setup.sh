@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🤖 Setting up Claude Companion..."
+echo "🤖 Setting up Code Companion..."
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,16 +22,16 @@ echo ""
 
 # Step 2: Create the app bundle
 echo -e "${BLUE}Step 2: Creating app bundle...${NC}"
-APP_BUNDLE="$SCRIPT_DIR/ClaudeCompanion.app"
+APP_BUNDLE="$SCRIPT_DIR/CodeCompanion.app"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 # Copy executable
-cp .build/release/ClaudeCompanion "$APP_BUNDLE/Contents/MacOS/"
+cp .build/release/CodeCompanion "$APP_BUNDLE/Contents/MacOS/"
 
 # Copy Info.plist
-cp ClaudeCompanion/Info.plist "$APP_BUNDLE/Contents/"
+cp CodeCompanion/Info.plist "$APP_BUNDLE/Contents/"
 
 echo -e "${GREEN}✓ App bundle created at $APP_BUNDLE${NC}"
 echo ""
@@ -52,7 +52,7 @@ echo "(Usually at ~/.claude/claude_desktop_config.json)"
 echo ""
 echo -e "${GREEN}{"
 echo '  "mcpServers": {'
-echo '    "claude-companion": {'
+echo '    "code-companion": {'
 echo "      \"command\": \"node\","
 echo "      \"args\": [\"$SCRIPT_DIR/mcp-server/dist/index.js\"]"
 echo '    }'
@@ -66,7 +66,7 @@ echo "1. Launch the companion app:"
 echo "   open $APP_BUNDLE"
 echo ""
 echo "2. Add to Login Items (optional):"
-echo "   System Settings → General → Login Items → Add ClaudeCompanion.app"
+echo "   System Settings → General → Login Items → Add CodeCompanion.app"
 echo ""
 echo "3. Restart Claude Code to load the MCP server"
 echo ""

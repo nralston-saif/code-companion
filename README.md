@@ -1,8 +1,8 @@
-# Claude Companion
+# Code Companion
 
 A desktop status indicator for Claude Code. A friendly pixel art companion lives in the corner of your screen and shows you what Claude is doing at a glance.
 
-![Claude Companion](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
+![Code Companion](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![MCP](https://img.shields.io/badge/MCP-Compatible-green)
 
 ## Features
 
@@ -51,8 +51,8 @@ Claude Code automatically controls the companion:
 
 ```bash
 # Clone the repository
-git clone https://github.com/nralston-saif/claude-companion.git
-cd claude-companion
+git clone https://github.com/nralston-saif/code-companion.git
+cd code-companion
 
 # Run setup script
 ./setup.sh
@@ -70,28 +70,28 @@ Add to your Claude Code MCP settings (`~/.claude.json` or via Claude Code settin
 ```json
 {
   "mcpServers": {
-    "claude-companion": {
+    "code-companion": {
       "command": "node",
-      "args": ["/path/to/claude-companion/mcp-server/dist/index.js"]
+      "args": ["/path/to/code-companion/mcp-server/dist/index.js"]
     }
   }
 }
 ```
 
-Replace `/path/to/claude-companion` with your actual installation path.
+Replace `/path/to/code-companion` with your actual installation path.
 
 ### Launch
 
 ```bash
 # Option 1: Run from terminal
-cd claude-companion/app
+cd code-companion/app
 swift run
 
 # Option 2: Use the built app
-open ClaudeCompanion.app
+open CodeCompanion.app
 
 # Option 3: Add to Applications and launch from there
-cp -r ClaudeCompanion.app /Applications/
+cp -r CodeCompanion.app /Applications/
 ```
 
 ## Manual Setup
@@ -103,8 +103,8 @@ cd app
 swift build -c release
 
 # Create app bundle
-mkdir -p ../ClaudeCompanion.app/Contents/MacOS
-cp .build/release/ClaudeCompanion ../ClaudeCompanion.app/Contents/MacOS/
+mkdir -p ../CodeCompanion.app/Contents/MacOS
+cp .build/release/CodeCompanion ../CodeCompanion.app/Contents/MacOS/
 ```
 
 ### 2. Build the MCP Server
@@ -122,7 +122,7 @@ npm run build
 swift run --package-path app
 
 # Or use the app bundle
-open ClaudeCompanion.app
+open CodeCompanion.app
 ```
 
 ## Usage
@@ -167,26 +167,26 @@ Access settings via right-click menu or menu bar icon:
 ## Architecture
 
 ```
-claude-companion/
+code-companion/
 ├── app/                          # Swift macOS app
-│   └── ClaudeCompanion/
-│       ├── ClaudeCompanionApp.swift    # Main app entry
-│       ├── CompanionView.swift         # Main UI with interactions
-│       ├── PixelCharacter.swift        # Canvas-based pixel renderer
-│       ├── AnimationController.swift   # Animation state machine
-│       ├── StateManager.swift          # HTTP server for MCP
-│       ├── CompanionState.swift        # State definitions
-│       ├── SettingsManager.swift       # User preferences
-│       ├── SoundManager.swift          # System sounds
-│       ├── MenuBarController.swift     # Menu bar integration
-│       ├── SkinManager.swift           # Color themes
-│       ├── PetStats.swift              # Happiness/mood tracking
-│       ├── NotificationQueue.swift     # Notification management
-│       ├── BubbleOverlay.swift         # Speech/thought bubbles
-│       └── ParticleSystem.swift        # Visual effects
+│   └── CodeCompanion/
+│       ├── CodeCompanionApp.swift        # Main app entry
+│       ├── CompanionView.swift           # Main UI with interactions
+│       ├── PixelCharacter.swift          # Canvas-based pixel renderer
+│       ├── AnimationController.swift     # Animation state machine
+│       ├── StateManager.swift            # HTTP server for MCP
+│       ├── CompanionState.swift          # State definitions
+│       ├── SettingsManager.swift         # User preferences
+│       ├── SoundManager.swift            # System sounds
+│       ├── MenuBarController.swift       # Menu bar integration
+│       ├── SkinManager.swift             # Color themes
+│       ├── PetStats.swift                # Happiness/mood tracking
+│       ├── NotificationQueue.swift       # Notification management
+│       ├── BubbleOverlay.swift           # Speech/thought bubbles
+│       └── ParticleSystem.swift          # Visual effects
 ├── mcp-server/                   # MCP server
 │   └── src/index.ts              # Tool definitions
-├── ClaudeCompanion.app/          # Built app bundle
+├── CodeCompanion.app/            # Built app bundle
 ├── setup.sh                      # Installation script
 └── README.md
 ```
@@ -218,8 +218,8 @@ The app runs a local server on port `52532` for MCP communication:
 2. Try running from terminal to see error messages: `swift run --package-path app`
 
 ### Two companions appearing
-1. Check for multiple running instances: `pgrep -l ClaudeCompanion`
-2. Kill all instances: `pkill ClaudeCompanion`
+1. Check for multiple running instances: `pgrep -l CodeCompanion`
+2. Kill all instances: `pkill CodeCompanion`
 3. Restart single instance
 
 ## Contributing

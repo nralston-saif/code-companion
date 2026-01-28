@@ -1,7 +1,7 @@
 {
-  "name": "claude-companion-mcp",
+  "name": "code-companion-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Claude Companion notification system",
+  "description": "MCP server for Code Companion notification system",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

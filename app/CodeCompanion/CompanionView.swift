@@ -144,7 +144,7 @@ struct CompanionView: View {
 
             Divider()
 
-            Button("Quit Claude Companion") {
+            Button("Quit Code Companion") {
                 NSApplication.shared.terminate(nil)
             }
         }

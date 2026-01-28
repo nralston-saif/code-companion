@@ -78,7 +78,7 @@ function stopHeartbeat(): void {
 }
 
 const server = new Server(
-  { name: "claude-companion", version: "1.0.0" },
+  { name: "code-companion", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 

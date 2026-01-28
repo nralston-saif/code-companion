@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Companion CLI - trigger companion states from command line
+# Code Companion CLI - trigger companion states from command line
 # Usage: companion <state> [duration]
 # States: thinking, working, attention, success, error, idle, listening, wave
 

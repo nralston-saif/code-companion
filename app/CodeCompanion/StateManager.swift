@@ -29,7 +29,7 @@ class StateManager {
         listener = newListener
         listener?.stateUpdateHandler = { [weak self] state in
             if case .ready = state {
-                print("Claude Companion server listening on port \(self?.port ?? 0)")
+                print("Code Companion server listening on port \(self?.port ?? 0)")
             } else if case .failed(let error) = state {
                 print("Server failed: \(error)")
             }
