@@ -44,31 +44,52 @@ npm run build
 echo -e "${GREEN}✓ MCP server ready${NC}"
 echo ""
 
-# Step 4: Show configuration instructions
-echo -e "${BLUE}Step 4: Configuration${NC}"
-echo ""
-echo "Add the following to your Claude Code MCP settings:"
-echo "(At ~/.claude.json)"
-echo ""
-echo -e "${GREEN}{"
-echo '  "mcpServers": {'
-echo '    "code-companion": {'
-echo "      \"command\": \"node\","
-echo "      \"args\": [\"$SCRIPT_DIR/mcp-server/dist/index.js\"]"
-echo '    }'
-echo '  }'
-echo -e "}${NC}"
+# Step 4: Configure MCP server
+echo -e "${BLUE}Step 4: Configuring MCP server...${NC}"
+CLAUDE_CONFIG="$HOME/.claude.json"
+
+if [ -f "$CLAUDE_CONFIG" ]; then
+  # Check if jq is available
+  if command -v jq &> /dev/null; then
+    # Check if code-companion is already configured
+    if jq -e '.mcpServers["code-companion"]' "$CLAUDE_CONFIG" > /dev/null 2>&1; then
+      # Update existing entry
+      jq --arg path "$SCRIPT_DIR/mcp-server/dist/index.js" \
+        '.mcpServers["code-companion"] = {"command": "node", "args": [$path]}' \
+        "$CLAUDE_CONFIG" > "$CLAUDE_CONFIG.tmp" && mv "$CLAUDE_CONFIG.tmp" "$CLAUDE_CONFIG"
+      echo -e "${GREEN}✓ Updated existing MCP configuration${NC}"
+    else
+      # Add new entry
+      jq --arg path "$SCRIPT_DIR/mcp-server/dist/index.js" \
+        '.mcpServers["code-companion"] = {"command": "node", "args": [$path]}' \
+        "$CLAUDE_CONFIG" > "$CLAUDE_CONFIG.tmp" && mv "$CLAUDE_CONFIG.tmp" "$CLAUDE_CONFIG"
+      echo -e "${GREEN}✓ Added MCP configuration to ~/.claude.json${NC}"
+    fi
+  else
+    echo -e "${BLUE}jq not found. Please add manually to ~/.claude.json:${NC}"
+    echo ""
+    echo '  "mcpServers": {'
+    echo '    "code-companion": {'
+    echo "      \"command\": \"node\","
+    echo "      \"args\": [\"$SCRIPT_DIR/mcp-server/dist/index.js\"]"
+    echo '    }'
+    echo '  }'
+  fi
+else
+  # Create new config file
+  echo "{\"mcpServers\":{\"code-companion\":{\"command\":\"node\",\"args\":[\"$SCRIPT_DIR/mcp-server/dist/index.js\"]}}}" > "$CLAUDE_CONFIG"
+  echo -e "${GREEN}✓ Created ~/.claude.json with MCP configuration${NC}"
+fi
 echo ""
 
-# Step 5: Launch instructions
-echo -e "${BLUE}To start:${NC}"
-echo "1. Launch the companion app:"
-echo "   open $APP_BUNDLE"
-echo ""
-echo "2. Add to Login Items (optional):"
-echo "   System Settings → General → Login Items → Add CodeCompanion.app"
-echo ""
-echo "3. Restart Claude Code to load the MCP server"
+# Step 5: Launch the app
+echo -e "${BLUE}Step 5: Launching Code Companion...${NC}"
+open "$APP_BUNDLE"
+echo -e "${GREEN}✓ Code Companion is running${NC}"
 echo ""
 
 echo -e "${GREEN}🎉 Setup complete!${NC}"
+echo ""
+echo "Next steps:"
+echo "1. Restart Claude Code to load the MCP server"
+echo "2. (Optional) Add to Login Items: System Settings → General → Login Items"

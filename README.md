@@ -61,38 +61,16 @@ cd code-companion
 This will:
 1. Build the macOS app
 2. Install and build the MCP server
-3. Show configuration instructions
+3. Auto-configure Claude Code MCP settings
+4. Launch the companion
 
-### Configure Claude Code
+After setup completes, restart Claude Code to load the MCP server.
 
-Add to your Claude Code MCP settings (`~/.claude.json` or via Claude Code settings):
+### Optional: Add to Login Items
 
-```json
-{
-  "mcpServers": {
-    "code-companion": {
-      "command": "node",
-      "args": ["/path/to/code-companion/mcp-server/dist/index.js"]
-    }
-  }
-}
-```
+To have Code Companion start automatically with macOS:
 
-Replace `/path/to/code-companion` with your actual installation path.
-
-### Launch
-
-```bash
-# Option 1: Run from terminal
-cd code-companion/app
-swift run
-
-# Option 2: Use the built app
-open CodeCompanion.app
-
-# Option 3: Add to Applications and launch from there
-cp -r CodeCompanion.app /Applications/
-```
+System Settings → General → Login Items → Add CodeCompanion.app
 
 ## Manual Setup
 
