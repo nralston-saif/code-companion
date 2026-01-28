@@ -48,7 +48,7 @@ echo ""
 echo -e "${BLUE}Step 4: Configuration${NC}"
 echo ""
 echo "Add the following to your Claude Code MCP settings:"
-echo "(Usually at ~/.claude/claude_desktop_config.json)"
+echo "(At ~/.claude.json)"
 echo ""
 echo -e "${GREEN}{"
 echo '  "mcpServers": {'
