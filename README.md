@@ -43,68 +43,26 @@ Claude Code automatically controls the companion:
 ## Quick Start
 
 ### Prerequisites
-- macOS 14.0 or later
-- [Claude Code](https://claude.ai/claude-code) CLI installed
-- Node.js 18+ (for MCP server)
+- macOS 14.0+
+- [Claude Code](https://claude.ai/code) CLI
+- Node.js 18+
+- jq (`brew install jq`)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/nralston-saif/code-companion.git
 cd code-companion
-
-# Run setup script
 ./setup.sh
 ```
 
-This will:
-1. Build the macOS app
-2. Install and build the MCP server
-3. Auto-configure Claude Code MCP settings (`~/.claude.json`)
-4. Auto-configure notification hooks (`~/.claude/settings.json`)
-5. Launch the companion
+Then restart Claude Code. That's it.
 
-After setup completes, restart Claude Code to connect.
+The setup script builds everything, configures Claude Code automatically, and launches the companion.
 
-> **Note:** Auto-configuration requires `jq`. Install with `brew install jq` if needed.
-
-### Optional: Add to Login Items
-
-To have Code Companion start automatically with macOS:
+### Optional: Launch at Login
 
 System Settings → General → Login Items → Add CodeCompanion.app
-
-## Manual Setup
-
-### 1. Build the Swift App
-
-```bash
-cd app
-swift build -c release
-
-# Create app bundle
-mkdir -p ../CodeCompanion.app/Contents/MacOS
-cp .build/release/CodeCompanion ../CodeCompanion.app/Contents/MacOS/
-```
-
-### 2. Build the MCP Server
-
-```bash
-cd mcp-server
-npm install
-npm run build
-```
-
-### 3. Run
-
-```bash
-# Terminal
-swift run --package-path app
-
-# Or use the app bundle
-open CodeCompanion.app
-```
 
 ## Usage
 
