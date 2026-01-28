@@ -2,16 +2,61 @@
 
 set -e
 
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 echo "🤖 Setting up Code Companion..."
+echo ""
+
+# Check prerequisites
+echo -e "${BLUE}Checking prerequisites...${NC}"
+MISSING=""
+
+if ! command -v swift &> /dev/null; then
+  echo -e "${RED}✗ Swift not found${NC}"
+  MISSING="$MISSING swift"
+else
+  echo -e "${GREEN}✓ Swift${NC}"
+fi
+
+if ! command -v node &> /dev/null; then
+  echo -e "${RED}✗ Node.js not found${NC}"
+  MISSING="$MISSING node"
+else
+  NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+  if [ "$NODE_VERSION" -lt 18 ]; then
+    echo -e "${RED}✗ Node.js 18+ required (found v$NODE_VERSION)${NC}"
+    MISSING="$MISSING node18"
+  else
+    echo -e "${GREEN}✓ Node.js $(node -v)${NC}"
+  fi
+fi
+
+if ! command -v jq &> /dev/null; then
+  echo -e "${RED}✗ jq not found${NC}"
+  MISSING="$MISSING jq"
+else
+  echo -e "${GREEN}✓ jq${NC}"
+fi
+
+if [ -n "$MISSING" ]; then
+  echo ""
+  echo -e "${RED}Missing dependencies. Please install:${NC}"
+  echo ""
+  [[ "$MISSING" == *"swift"* ]] && echo "  Swift (Xcode CLI tools):  xcode-select --install"
+  [[ "$MISSING" == *"node"* ]] && echo "  Node.js 18+:              brew install node"
+  [[ "$MISSING" == *"jq"* ]] && echo "  jq:                       brew install jq"
+  echo ""
+  exit 1
+fi
+
 echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Step 1: Build the Swift app
 echo -e "${BLUE}Step 1: Building the macOS app...${NC}"

@@ -43,10 +43,17 @@ Claude Code automatically controls the companion:
 ## Quick Start
 
 ### Prerequisites
-- macOS 14.0+
-- [Claude Code](https://claude.ai/code) CLI
-- Node.js 18+
-- jq (`brew install jq`)
+
+You'll need these installed before running setup:
+
+| Dependency | Check | Install |
+|------------|-------|---------|
+| Xcode CLI tools | `swift --version` | `xcode-select --install` |
+| Node.js 18+ | `node --version` | `brew install node` |
+| jq | `jq --version` | `brew install jq` |
+| [Claude Code](https://claude.ai/code) | `claude --version` | See Claude Code docs |
+
+Don't have Homebrew? Install it first: https://brew.sh
 
 ### Installation
 
@@ -56,9 +63,7 @@ cd code-companion
 ./setup.sh
 ```
 
-Then restart Claude Code. That's it.
-
-The setup script builds everything, configures Claude Code automatically, and launches the companion.
+The setup script will check for missing dependencies and tell you what to install. Once it completes, restart Claude Code to connect.
 
 ### Optional: Launch at Login
 
