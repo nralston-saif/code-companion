@@ -12,7 +12,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "CodeCompanion",
-            path: "CodeCompanion"
+            path: "CodeCompanion",
+            exclude: ["Info.plist"]
         )
     ]
 )
